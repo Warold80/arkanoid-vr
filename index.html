@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arkanoid VR</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <a-scene>
+    <!-- Paddle -->
+    <a-box id="paddle" position="0 -1.5 -3" width="1.5" height="0.2" depth="0.2" color="blue"></a-box>
+
+    <!-- Ball -->
+    <a-sphere id="ball" position="0 -1 -3" radius="0.1" color="red"></a-sphere>
+
+    <!-- Bricks -->
+    <a-box position="-2 1 -3" width="0.8" height="0.3" depth="0.2" color="green" class="brick"></a-box>
+    <a-box position="0 1 -3" width="0.8" height="0.3" depth="0.2" color="green" class="brick"></a-box>
+    <a-box position="2 1 -3" width="0.8" height="0.3" depth="0.2" color="green" class="brick"></a-box>
+
+    <!-- Floor -->
+    <a-plane rotation="-90 0 0" position="0 -2 -3" width="10" height="10" color="#CCC"></a-plane>
+
+    <!-- Camera -->
+    <a-camera position="0 1.6 0">
+      <a-entity laser-controls="hand: right"></a-entity>
+    </a-camera>
+  </a-scene>
+
+  <script>
+    // Variables
+    const ball = document.getElementById('ball');
+    const paddle = document.getElementById('paddle');
+    const bricks = document.querySelectorAll('.brick');
+
+    let ballDirection = { x: 0.02, y: 0.02 };
+    let interval;
+
+    // Move the paddle
+    window.addEventListener('mousemove', (e) => {
+      const x = (e.clientX / window.innerWidth) * 4 - 2; // Convert mouse X to scene coordinates
+      paddle.setAttribute('position', `${x} -1.5 -3`);
+    });
+
+    // Ball movement
+    function moveBall() {
+      const ballPos = ball.getAttribute('position');
+      ballPos.x += ballDirection.x;
+      ballPos.y += ballDirection.y;
+
+      // Bounce off walls
+      if (ballPos.x > 2 || ballPos.x < -2) ballDirection.x *= -1;
+      if (ballPos.y > 2) ballDirection.y *= -1;
+
+      // Reset ball if it falls
+      if (ballPos.y < -2) {
+        ball.setAttribute('position', '0 -1 -3');
+        ballDirection = { x: 0.02, y: 0.02 };
+      }
+
+      // Check paddle collision
+      const paddlePos = paddle.getAttribute('position');
+      if (
+        ballPos.y <= paddlePos.y + 0.1 &&
+        ballPos.x >= paddlePos.x - 0.75 &&
+        ballPos.x <= paddlePos.x + 0.75
+      ) {
+        ballDirection.y *= -1;
+      }
+
+      // Check brick collisions
+      bricks.forEach((brick) => {
+        const brickPos = brick.getAttribute('position');
+        if (
+          ballPos.y <= brickPos.y + 0.15 &&
+          ballPos.y >= brickPos.y - 0.15 &&
+          ballPos.x >= brickPos.x - 0.4 &&
+          ballPos.x <= brickPos.x + 0.4
+        ) {
+          ballDirection.y *= -1;
+          brick.parentNode.removeChild(brick); // Remove brick
+        }
+      });
+
+      ball.setAttribute('position', ballPos);
+    }
+
+    // Start game loop
+    interval = setInterval(moveBall, 16);
+  </script>
+</body>
+</html>
