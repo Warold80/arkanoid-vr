@@ -49,23 +49,22 @@
     </a-camera>
 
     <!-- Paddle -->
-    <a-box id="paddle" position="0 -1.5 -3" width="1.5" height="0.2" depth="0.2" color="blue" dynamic-body="mass: 10"></a-box>
+    <a-box id="paddle" position="0 -1.5 -3" width="2" height="0.2" depth="0.2" color="blue" dynamic-body="mass: 10"></a-box>
 
     <!-- Ball -->
     <a-sphere id="ball" position="0 -1 -3" radius="0.1" color="red" dynamic-body="mass: 1"></a-sphere>
 
     <!-- Bricks -->
-    <!-- Les briques sont générées par JavaScript -->
     <a-plane rotation="-90 0 0" position="0 -2 -3" width="10" height="10" color="#CCC"></a-plane>
   </a-scene>
 
   <script>
-    // Variables
+    // Variables du jeu
     let paddle, ball, controller, bricks = [];
     let points = 0;
     let totalBricks = 200;
     let gameOver = false;
-    let paddleSpeed = 2;  // Vitesse de déplacement du paddle
+    let paddleSpeed = 1.5;  // Vitesse de déplacement du paddle
 
     // Fonction pour démarrer le jeu
     function startGame() {
@@ -167,13 +166,12 @@
     // Fonction pour déplacer le paddle avec la manette
     controller.addEventListener('controllerconnected', (event) => {
       const controllerObj = event.detail.controller;
-      
       controllerObj.addEventListener('thumbstickmoved', (e) => {
         // Déplacer le paddle horizontalement avec le thumbstick de la manette
         let newPos = paddle.getAttribute('position');
         newPos.x += e.detail.x * paddleSpeed;
         // Limiter la position du paddle dans un certain intervalle
-        newPos.x = Math.max(-3, Math.min(3, newPos.x));
+        newPos.x = Math.max(-4, Math.min(4, newPos.x));
         paddle.setAttribute('position', newPos);
       });
     });
