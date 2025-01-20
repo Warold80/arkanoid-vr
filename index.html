@@ -65,6 +65,7 @@
     let points = 0;
     let totalBricks = 200;
     let gameOver = false;
+    let paddleSpeed = 2;  // Vitesse de déplacement du paddle
 
     // Fonction pour démarrer le jeu
     function startGame() {
@@ -167,7 +168,558 @@
     controller.addEventListener('controllerconnected', (event) => {
       const controllerObj = event.detail.controller;
       controllerObj.addEventListener('thumbstickmoved', (e) => {
-        paddle.setAttribute('position', `${e.detail.x * 2} -1.5 -3`);
+        // Déplacer le paddle horizontalement avec le thumbstick de la manette
+        let newPos = paddle.getAttribute('position');
+        newPos.x += e.detail.x * paddleSpeed;
+        // Limiter la position du paddle dans un certain intervalle
+        newPos.x = Math.max(-3, Math.min(3, newPos.x));
+        paddle.setAttribute('position', newPos);
+      });
+    });
+  </script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arkanoid VR</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe-physics-system/dist/aframe-physics-system.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    canvas { display: block; }
+    #start-screen { 
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      color: white; 
+      font-family: Arial, sans-serif; 
+      font-size: 30px; 
+      text-align: center; 
+    }
+    button {
+      background-color: #008CBA;
+      color: white;
+      padding: 15px 32px;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #007B9D;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Page d'accueil -->
+  <div id="start-screen">
+    <h1>Arkanoid VR</h1>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+
+  <!-- Jeu VR -->
+  <a-scene physics="gravity: -9.8" vr-mode-ui="enabled: true" id="game-scene" style="display: none;">
+    <!-- Camera -->
+    <a-camera position="0 1.6 0">
+      <a-entity id="controller" laser-controls="hand: right"></a-entity>
+    </a-camera>
+
+    <!-- Paddle -->
+    <a-box id="paddle" position="0 -1.5 -3" width="1.5" height="0.2" depth="0.2" color="blue" dynamic-body="mass: 10"></a-box>
+
+    <!-- Ball -->
+    <a-sphere id="ball" position="0 -1 -3" radius="0.1" color="red" dynamic-body="mass: 1"></a-sphere>
+
+    <!-- Bricks -->
+    <!-- Les briques sont générées par JavaScript -->
+    <a-plane rotation="-90 0 0" position="0 -2 -3" width="10" height="10" color="#CCC"></a-plane>
+  </a-scene>
+
+  <script>
+    // Variables
+    let paddle, ball, controller, bricks = [];
+    let points = 0;
+    let totalBricks = 200;
+    let gameOver = false;
+    let paddleSpeed = 2;  // Vitesse de déplacement du paddle
+
+    // Fonction pour démarrer le jeu
+    function startGame() {
+      // Cacher l'écran d'accueil
+      document.getElementById('start-screen').style.display = 'none';
+      // Afficher la scène du jeu
+      document.getElementById('game-scene').style.display = 'block';
+
+      // Initialiser les éléments du jeu
+      paddle = document.getElementById('paddle');
+      ball = document.getElementById('ball');
+      controller = document.getElementById('controller');
+
+      // Créer les briques
+      createBricks();
+
+      // Commencer la boucle de mise à jour
+      gameLoop();
+    }
+
+    // Créer 200 briques avec différentes couleurs
+    function createBricks() {
+      const colors = ['red', 'green', 'blue', 'yellow', 'orange', 'purple'];
+      for (let i = 0; i < totalBricks; i++) {
+        let brick = document.createElement('a-box');
+        let x = (i % 10) * 1.2 - 5; // Position horizontale
+        let y = Math.floor(i / 10) * 0.3 + 1; // Position verticale
+        let color = colors[i % colors.length];
+        let pointsValue = getPointsForColor(color);
+
+        brick.setAttribute('position', `${x} ${y} -3`);
+        brick.setAttribute('width', '1');
+        brick.setAttribute('height', '0.3');
+        brick.setAttribute('depth', '0.2');
+        brick.setAttribute('color', color);
+        brick.setAttribute('class', 'brick');
+        brick.setAttribute('data-points', pointsValue);
+        brick.setAttribute('dynamic-body', 'mass: 0'); // Pas de physique pour les briques
+
+        // Ajouter la brique à la scène
+        document.querySelector('a-scene').appendChild(brick);
+        bricks.push(brick);
+      }
+    }
+
+    // Retourne le nombre de points en fonction de la couleur
+    function getPointsForColor(color) {
+      switch (color) {
+        case 'red': return 10;
+        case 'green': return 20;
+        case 'blue': return 30;
+        case 'yellow': return 40;
+        case 'orange': return 50;
+        case 'purple': return 60;
+        default: return 0;
+      }
+    }
+
+    // Fonction de mise à jour du jeu
+    function gameLoop() {
+      // Vérifier les collisions avec le paddle
+      const ballPos = ball.getAttribute('position');
+      const paddlePos = paddle.getAttribute('position');
+      if (
+        ballPos.y <= paddlePos.y + 0.1 &&
+        ballPos.x >= paddlePos.x - 0.75 &&
+        ballPos.x <= paddlePos.x + 0.75
+      ) {
+        ball.setAttribute('position', `${ballPos.x} ${paddlePos.y + 0.1} ${ballPos.z}`);
+      }
+
+      // Vérifier les collisions avec les briques
+      bricks.forEach((brick, index) => {
+        const brickPos = brick.getAttribute('position');
+        if (
+          ballPos.y <= brickPos.y + 0.15 &&
+          ballPos.y >= brickPos.y - 0.15 &&
+          ballPos.x >= brickPos.x - 0.4 &&
+          ballPos.x <= brickPos.x + 0.4
+        ) {
+          // Supprimer la brique et ajouter les points
+          const pointsValue = parseInt(brick.getAttribute('data-points'));
+          points += pointsValue;
+          brick.parentNode.removeChild(brick);
+          bricks.splice(index, 1);
+        }
+      });
+
+      // Fin du jeu si toutes les briques sont détruites
+      if (bricks.length === 0) {
+        gameOver = true;
+        alert(`Game Over! You scored: ${points} points.`);
+        document.getElementById('start-screen').style.display = 'block';
+        document.getElementById('game-scene').style.display = 'none';
+        points = 0;
+      }
+    }
+
+    // Fonction pour déplacer le paddle avec la manette
+    controller.addEventListener('controllerconnected', (event) => {
+      const controllerObj = event.detail.controller;
+      controllerObj.addEventListener('thumbstickmoved', (e) => {
+        // Déplacer le paddle horizontalement avec le thumbstick de la manette
+        let newPos = paddle.getAttribute('position');
+        newPos.x += e.detail.x * paddleSpeed;
+        // Limiter la position du paddle dans un certain intervalle
+        newPos.x = Math.max(-3, Math.min(3, newPos.x));
+        paddle.setAttribute('position', newPos);
+      });
+    });
+  </script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arkanoid VR</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe-physics-system/dist/aframe-physics-system.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    canvas { display: block; }
+    #start-screen { 
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      color: white; 
+      font-family: Arial, sans-serif; 
+      font-size: 30px; 
+      text-align: center; 
+    }
+    button {
+      background-color: #008CBA;
+      color: white;
+      padding: 15px 32px;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #007B9D;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Page d'accueil -->
+  <div id="start-screen">
+    <h1>Arkanoid VR</h1>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+
+  <!-- Jeu VR -->
+  <a-scene physics="gravity: -9.8" vr-mode-ui="enabled: true" id="game-scene" style="display: none;">
+    <!-- Camera -->
+    <a-camera position="0 1.6 0">
+      <a-entity id="controller" laser-controls="hand: right"></a-entity>
+    </a-camera>
+
+    <!-- Paddle -->
+    <a-box id="paddle" position="0 -1.5 -3" width="1.5" height="0.2" depth="0.2" color="blue" dynamic-body="mass: 10"></a-box>
+
+    <!-- Ball -->
+    <a-sphere id="ball" position="0 -1 -3" radius="0.1" color="red" dynamic-body="mass: 1"></a-sphere>
+
+    <!-- Bricks -->
+    <!-- Les briques sont générées par JavaScript -->
+    <a-plane rotation="-90 0 0" position="0 -2 -3" width="10" height="10" color="#CCC"></a-plane>
+  </a-scene>
+
+  <script>
+    // Variables
+    let paddle, ball, controller, bricks = [];
+    let points = 0;
+    let totalBricks = 200;
+    let gameOver = false;
+    let paddleSpeed = 2;  // Vitesse de déplacement du paddle
+
+    // Fonction pour démarrer le jeu
+    function startGame() {
+      // Cacher l'écran d'accueil
+      document.getElementById('start-screen').style.display = 'none';
+      // Afficher la scène du jeu
+      document.getElementById('game-scene').style.display = 'block';
+
+      // Initialiser les éléments du jeu
+      paddle = document.getElementById('paddle');
+      ball = document.getElementById('ball');
+      controller = document.getElementById('controller');
+
+      // Créer les briques
+      createBricks();
+
+      // Commencer la boucle de mise à jour
+      gameLoop();
+    }
+
+    // Créer 200 briques avec différentes couleurs
+    function createBricks() {
+      const colors = ['red', 'green', 'blue', 'yellow', 'orange', 'purple'];
+      for (let i = 0; i < totalBricks; i++) {
+        let brick = document.createElement('a-box');
+        let x = (i % 10) * 1.2 - 5; // Position horizontale
+        let y = Math.floor(i / 10) * 0.3 + 1; // Position verticale
+        let color = colors[i % colors.length];
+        let pointsValue = getPointsForColor(color);
+
+        brick.setAttribute('position', `${x} ${y} -3`);
+        brick.setAttribute('width', '1');
+        brick.setAttribute('height', '0.3');
+        brick.setAttribute('depth', '0.2');
+        brick.setAttribute('color', color);
+        brick.setAttribute('class', 'brick');
+        brick.setAttribute('data-points', pointsValue);
+        brick.setAttribute('dynamic-body', 'mass: 0'); // Pas de physique pour les briques
+
+        // Ajouter la brique à la scène
+        document.querySelector('a-scene').appendChild(brick);
+        bricks.push(brick);
+      }
+    }
+
+    // Retourne le nombre de points en fonction de la couleur
+    function getPointsForColor(color) {
+      switch (color) {
+        case 'red': return 10;
+        case 'green': return 20;
+        case 'blue': return 30;
+        case 'yellow': return 40;
+        case 'orange': return 50;
+        case 'purple': return 60;
+        default: return 0;
+      }
+    }
+
+    // Fonction de mise à jour du jeu
+    function gameLoop() {
+      // Vérifier les collisions avec le paddle
+      const ballPos = ball.getAttribute('position');
+      const paddlePos = paddle.getAttribute('position');
+      if (
+        ballPos.y <= paddlePos.y + 0.1 &&
+        ballPos.x >= paddlePos.x - 0.75 &&
+        ballPos.x <= paddlePos.x + 0.75
+      ) {
+        ball.setAttribute('position', `${ballPos.x} ${paddlePos.y + 0.1} ${ballPos.z}`);
+      }
+
+      // Vérifier les collisions avec les briques
+      bricks.forEach((brick, index) => {
+        const brickPos = brick.getAttribute('position');
+        if (
+          ballPos.y <= brickPos.y + 0.15 &&
+          ballPos.y >= brickPos.y - 0.15 &&
+          ballPos.x >= brickPos.x - 0.4 &&
+          ballPos.x <= brickPos.x + 0.4
+        ) {
+          // Supprimer la brique et ajouter les points
+          const pointsValue = parseInt(brick.getAttribute('data-points'));
+          points += pointsValue;
+          brick.parentNode.removeChild(brick);
+          bricks.splice(index, 1);
+        }
+      });
+
+      // Fin du jeu si toutes les briques sont détruites
+      if (bricks.length === 0) {
+        gameOver = true;
+        alert(`Game Over! You scored: ${points} points.`);
+        document.getElementById('start-screen').style.display = 'block';
+        document.getElementById('game-scene').style.display = 'none';
+        points = 0;
+      }
+    }
+
+    // Fonction pour déplacer le paddle avec la manette
+    controller.addEventListener('controllerconnected', (event) => {
+      const controllerObj = event.detail.controller;
+      controllerObj.addEventListener('thumbstickmoved', (e) => {
+        // Déplacer le paddle horizontalement avec le thumbstick de la manette
+        let newPos = paddle.getAttribute('position');
+        newPos.x += e.detail.x * paddleSpeed;
+        // Limiter la position du paddle dans un certain intervalle
+        newPos.x = Math.max(-3, Math.min(3, newPos.x));
+        paddle.setAttribute('position', newPos);
+      });
+    });
+  </script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arkanoid VR</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe-physics-system/dist/aframe-physics-system.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    canvas { display: block; }
+    #start-screen { 
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      color: white; 
+      font-family: Arial, sans-serif; 
+      font-size: 30px; 
+      text-align: center; 
+    }
+    button {
+      background-color: #008CBA;
+      color: white;
+      padding: 15px 32px;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #007B9D;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Page d'accueil -->
+  <div id="start-screen">
+    <h1>Arkanoid VR</h1>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+
+  <!-- Jeu VR -->
+  <a-scene physics="gravity: -9.8" vr-mode-ui="enabled: true" id="game-scene" style="display: none;">
+    <!-- Camera -->
+    <a-camera position="0 1.6 0">
+      <a-entity id="controller" laser-controls="hand: right"></a-entity>
+    </a-camera>
+
+    <!-- Paddle -->
+    <a-box id="paddle" position="0 -1.5 -3" width="1.5" height="0.2" depth="0.2" color="blue" dynamic-body="mass: 10"></a-box>
+
+    <!-- Ball -->
+    <a-sphere id="ball" position="0 -1 -3" radius="0.1" color="red" dynamic-body="mass: 1"></a-sphere>
+
+    <!-- Bricks -->
+    <!-- Les briques sont générées par JavaScript -->
+    <a-plane rotation="-90 0 0" position="0 -2 -3" width="10" height="10" color="#CCC"></a-plane>
+  </a-scene>
+
+  <script>
+    // Variables
+    let paddle, ball, controller, bricks = [];
+    let points = 0;
+    let totalBricks = 200;
+    let gameOver = false;
+    let paddleSpeed = 2;  // Vitesse de déplacement du paddle
+
+    // Fonction pour démarrer le jeu
+    function startGame() {
+      // Cacher l'écran d'accueil
+      document.getElementById('start-screen').style.display = 'none';
+      // Afficher la scène du jeu
+      document.getElementById('game-scene').style.display = 'block';
+
+      // Initialiser les éléments du jeu
+      paddle = document.getElementById('paddle');
+      ball = document.getElementById('ball');
+      controller = document.getElementById('controller');
+
+      // Créer les briques
+      createBricks();
+
+      // Commencer la boucle de mise à jour
+      gameLoop();
+    }
+
+    // Créer 200 briques avec différentes couleurs
+    function createBricks() {
+      const colors = ['red', 'green', 'blue', 'yellow', 'orange', 'purple'];
+      for (let i = 0; i < totalBricks; i++) {
+        let brick = document.createElement('a-box');
+        let x = (i % 10) * 1.2 - 5; // Position horizontale
+        let y = Math.floor(i / 10) * 0.3 + 1; // Position verticale
+        let color = colors[i % colors.length];
+        let pointsValue = getPointsForColor(color);
+
+        brick.setAttribute('position', `${x} ${y} -3`);
+        brick.setAttribute('width', '1');
+        brick.setAttribute('height', '0.3');
+        brick.setAttribute('depth', '0.2');
+        brick.setAttribute('color', color);
+        brick.setAttribute('class', 'brick');
+        brick.setAttribute('data-points', pointsValue);
+        brick.setAttribute('dynamic-body', 'mass: 0'); // Pas de physique pour les briques
+
+        // Ajouter la brique à la scène
+        document.querySelector('a-scene').appendChild(brick);
+        bricks.push(brick);
+      }
+    }
+
+    // Retourne le nombre de points en fonction de la couleur
+    function getPointsForColor(color) {
+      switch (color) {
+        case 'red': return 10;
+        case 'green': return 20;
+        case 'blue': return 30;
+        case 'yellow': return 40;
+        case 'orange': return 50;
+        case 'purple': return 60;
+        default: return 0;
+      }
+    }
+
+    // Fonction de mise à jour du jeu
+    function gameLoop() {
+      // Vérifier les collisions avec le paddle
+      const ballPos = ball.getAttribute('position');
+      const paddlePos = paddle.getAttribute('position');
+      if (
+        ballPos.y <= paddlePos.y + 0.1 &&
+        ballPos.x >= paddlePos.x - 0.75 &&
+        ballPos.x <= paddlePos.x + 0.75
+      ) {
+        ball.setAttribute('position', `${ballPos.x} ${paddlePos.y + 0.1} ${ballPos.z}`);
+      }
+
+      // Vérifier les collisions avec les briques
+      bricks.forEach((brick, index) => {
+        const brickPos = brick.getAttribute('position');
+        if (
+          ballPos.y <= brickPos.y + 0.15 &&
+          ballPos.y >= brickPos.y - 0.15 &&
+          ballPos.x >= brickPos.x - 0.4 &&
+          ballPos.x <= brickPos.x + 0.4
+        ) {
+          // Supprimer la brique et ajouter les points
+          const pointsValue = parseInt(brick.getAttribute('data-points'));
+          points += pointsValue;
+          brick.parentNode.removeChild(brick);
+          bricks.splice(index, 1);
+        }
+      });
+
+      // Fin du jeu si toutes les briques sont détruites
+      if (bricks.length === 0) {
+        gameOver = true;
+        alert(`Game Over! You scored: ${points} points.`);
+        document.getElementById('start-screen').style.display = 'block';
+        document.getElementById('game-scene').style.display = 'none';
+        points = 0;
+      }
+    }
+
+    // Fonction pour déplacer le paddle avec la manette
+    controller.addEventListener('controllerconnected', (event) => {
+      const controllerObj = event.detail.controller;
+      controllerObj.addEventListener('thumbstickmoved', (e) => {
+        // Déplacer le paddle horizontalement avec le thumbstick de la manette
+        let newPos = paddle.getAttribute('position');
+        newPos.x += e.detail.x * paddleSpeed;
+        // Limiter la position du paddle dans un certain intervalle
+        newPos.x = Math.max(-3, Math.min(3, newPos.x));
+        paddle.setAttribute('position', newPos);
       });
     });
   </script>
