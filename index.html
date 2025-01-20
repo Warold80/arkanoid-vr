@@ -3,58 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Angry Birds VR</title>
+  <title>Angry Birds VR avec WebXR</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe-physics-system/dist/aframe-physics-system.min.js"></script>
   <style>
     body { margin: 0; padding: 0; }
     canvas { display: block; }
-    #start-screen { 
-      position: absolute; 
-      top: 50%; 
-      left: 50%; 
-      transform: translate(-50%, -50%); 
-      color: white; 
-      font-family: Arial, sans-serif; 
-      font-size: 30px; 
-      text-align: center; 
-    }
-    button {
-      background-color: #008CBA;
-      color: white;
-      padding: 15px 32px;
-      font-size: 16px;
-      border: none;
-      cursor: pointer;
-      border-radius: 5px;
-    }
-    button:hover {
-      background-color: #007B9D;
-    }
   </style>
 </head>
 <body>
 
   <!-- Page d'accueil -->
-  <div id="start-screen">
+  <div id="start-screen" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-family: Arial, sans-serif; font-size: 30px; text-align: center;">
     <h1>Angry Birds VR</h1>
     <button onclick="startGame()">Start Game</button>
   </div>
 
   <!-- Jeu VR -->
-  <a-scene physics="gravity: -9.8" vr-mode-ui="enabled: true" id="game-scene" style="display: none;">
-    <!-- Camera -->
+  <a-scene xr="enabled: true; controller: true;" physics="gravity: -9.8">
+    <!-- Camera et contrôleurs -->
     <a-camera position="0 1.6 0">
-      <a-entity id="controller" tracked-controls="hand: right"></a-entity>
+      <a-entity id="controller1" oculus-touch-controls="hand: left" position="0 0 -1"></a-entity>
+      <a-entity id="controller2" oculus-touch-controls="hand: right" position="0 0 -1"></a-entity>
     </a-camera>
 
     <!-- Catapulte -->
     <a-box id="catapult" position="0 -1 -3" width="2" height="0.5" depth="0.5" color="brown"></a-box>
 
-    <!-- Projectiles -->
+    <!-- Projectile -->
     <a-sphere id="projectile" position="0 -1.2 -3" radius="0.15" color="red" dynamic-body="mass: 1"></a-sphere>
 
-    <!-- Objets à détruire (briques) -->
+    <!-- Objets à détruire -->
     <a-box id="brick1" position="2 0.5 -3" width="1" height="1" depth="1" color="blue" dynamic-body="mass: 2"></a-box>
     <a-box id="brick2" position="3 0.5 -3" width="1" height="1" depth="1" color="green" dynamic-body="mass: 2"></a-box>
     <a-box id="brick3" position="4 0.5 -3" width="1" height="1" depth="1" color="yellow" dynamic-body="mass: 2"></a-box>
@@ -62,59 +41,40 @@
   </a-scene>
 
   <script>
-    let catapult, projectile, controller;
+    let controller1, controller2, projectile;
     let isCharging = false;
     let chargePower = 0;
 
+    // Fonction pour démarrer le jeu
     function startGame() {
-      // Cacher l'écran d'accueil et afficher la scène du jeu
+      // Cacher l'écran de démarrage
       document.getElementById('start-screen').style.display = 'none';
-      document.getElementById('game-scene').style.display = 'block';
-
-      // Initialisation des objets
-      catapult = document.getElementById('catapult');
-      projectile = document.getElementById('projectile');
-      controller = document.getElementById('controller');
-
-      // Mettre à jour l'interface et la logique de lancement
-      startCharging();
     }
 
-    // Fonction pour charger la puissance du lancement
-    function startCharging() {
-      controller.addEventListener('controllerconnected', (event) => {
-        const controllerObj = event.detail.controller;
+    // Suivi des contrôleurs et charge du projectile
+    AFRAME.registerComponent('controller-movement', {
+      init: function () {
+        controller1 = document.getElementById('controller1');
+        controller2 = document.getElementById('controller2');
+        projectile = document.getElementById('projectile');
+      },
+      tick: function () {
+        // Capture du mouvement du joystick de la manette (utilisation de l'API WebXR)
+        const controller1Pos = controller1.getAttribute('position');
+        const controller2Pos = controller2.getAttribute('position');
 
-        controllerObj.addEventListener('thumbstickmoved', (e) => {
-          // Augmenter la charge de la puissance en fonction de la direction du joystick
-          if (e.detail.y > 0) {
-            chargePower += 0.1;
-          } else if (e.detail.y < 0) {
-            chargePower -= 0.1;
-          }
-          chargePower = Math.max(0, Math.min(2, chargePower)); // Limiter la charge de puissance
-        });
+        // Logique de déplacement du projectile (ou du tir avec le joystick)
+        if (controller1Pos && controller2Pos) {
+          // Exemple basique de gestion du mouvement du projectile selon les mouvements du contrôleur
+          // Ajuste selon la logique du jeu pour lancer ou déplacer le projectile
+        }
+      }
+    });
 
-        // Lors de la pression sur un bouton, lancer le projectile
-        controllerObj.addEventListener('triggerdown', () => {
-          if (!isCharging) {
-            isCharging = true;
-            launchProjectile(chargePower);
-            chargePower = 0;
-          }
-        });
-      });
-    }
-
-    // Fonction pour lancer le projectile
-    function launchProjectile(power) {
-      let projPos = projectile.getAttribute('position');
-      let launchDirection = new THREE.Vector3(0, 0, -1); // Lancer dans la direction de -Z (vers le mur)
-
-      // Appliquer une force de lancement basée sur la puissance
-      let force = launchDirection.multiplyScalar(power * 10);
-      projectile.body.applyImpulse(force, projectile.body.position);
-    }
+    // Init le composant
+    document.querySelector('a-scene').addEventListener('loaded', () => {
+      document.querySelector('a-scene').setAttribute('controller-movement', '');
+    });
   </script>
 
 </body>
