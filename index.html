@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arkanoid VR</title>
+  <title>Angry Birds VR</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe-physics-system/dist/aframe-physics-system.min.js"></script>
   <style>
@@ -37,7 +37,7 @@
 
   <!-- Page d'accueil -->
   <div id="start-screen">
-    <h1>Arkanoid VR</h1>
+    <h1>Angry Birds VR</h1>
     <button onclick="startGame()">Start Game</button>
   </div>
 
@@ -48,133 +48,73 @@
       <a-entity id="controller" tracked-controls="hand: right"></a-entity>
     </a-camera>
 
-    <!-- Paddle -->
-    <a-box id="paddle" position="0 -1.5 -3" width="2" height="0.2" depth="0.2" color="blue" dynamic-body="mass: 10"></a-box>
+    <!-- Catapulte -->
+    <a-box id="catapult" position="0 -1 -3" width="2" height="0.5" depth="0.5" color="brown"></a-box>
 
-    <!-- Ball -->
-    <a-sphere id="ball" position="0 -1 -3" radius="0.1" color="red" dynamic-body="mass: 1"></a-sphere>
+    <!-- Projectiles -->
+    <a-sphere id="projectile" position="0 -1.2 -3" radius="0.15" color="red" dynamic-body="mass: 1"></a-sphere>
 
-    <!-- Bricks -->
-    <a-plane rotation="-90 0 0" position="0 -2 -3" width="10" height="10" color="#CCC"></a-plane>
+    <!-- Objets à détruire (briques) -->
+    <a-box id="brick1" position="2 0.5 -3" width="1" height="1" depth="1" color="blue" dynamic-body="mass: 2"></a-box>
+    <a-box id="brick2" position="3 0.5 -3" width="1" height="1" depth="1" color="green" dynamic-body="mass: 2"></a-box>
+    <a-box id="brick3" position="4 0.5 -3" width="1" height="1" depth="1" color="yellow" dynamic-body="mass: 2"></a-box>
+
   </a-scene>
 
   <script>
-    // Variables du jeu
-    let paddle, ball, controller, bricks = [];
-    let points = 0;
-    let totalBricks = 200;
-    let gameOver = false;
-    let paddleSpeed = 1.5;  // Vitesse de déplacement du paddle
+    let catapult, projectile, controller;
+    let isCharging = false;
+    let chargePower = 0;
 
-    // Fonction pour démarrer le jeu
     function startGame() {
-      // Cacher l'écran d'accueil
+      // Cacher l'écran d'accueil et afficher la scène du jeu
       document.getElementById('start-screen').style.display = 'none';
-      // Afficher la scène du jeu
       document.getElementById('game-scene').style.display = 'block';
 
-      // Initialiser les éléments du jeu
-      paddle = document.getElementById('paddle');
-      ball = document.getElementById('ball');
+      // Initialisation des objets
+      catapult = document.getElementById('catapult');
+      projectile = document.getElementById('projectile');
       controller = document.getElementById('controller');
 
-      // Créer les briques
-      createBricks();
-
-      // Commencer la boucle de mise à jour
-      gameLoop();
+      // Mettre à jour l'interface et la logique de lancement
+      startCharging();
     }
 
-    // Créer 200 briques avec différentes couleurs
-    function createBricks() {
-      const colors = ['red', 'green', 'blue', 'yellow', 'orange', 'purple'];
-      for (let i = 0; i < totalBricks; i++) {
-        let brick = document.createElement('a-box');
-        let x = (i % 10) * 1.2 - 5; // Position horizontale
-        let y = Math.floor(i / 10) * 0.3 + 1; // Position verticale
-        let color = colors[i % colors.length];
-        let pointsValue = getPointsForColor(color);
+    // Fonction pour charger la puissance du lancement
+    function startCharging() {
+      controller.addEventListener('controllerconnected', (event) => {
+        const controllerObj = event.detail.controller;
 
-        brick.setAttribute('position', `${x} ${y} -3`);
-        brick.setAttribute('width', '1');
-        brick.setAttribute('height', '0.3');
-        brick.setAttribute('depth', '0.2');
-        brick.setAttribute('color', color);
-        brick.setAttribute('class', 'brick');
-        brick.setAttribute('data-points', pointsValue);
-        brick.setAttribute('dynamic-body', 'mass: 0'); // Pas de physique pour les briques
+        controllerObj.addEventListener('thumbstickmoved', (e) => {
+          // Augmenter la charge de la puissance en fonction de la direction du joystick
+          if (e.detail.y > 0) {
+            chargePower += 0.1;
+          } else if (e.detail.y < 0) {
+            chargePower -= 0.1;
+          }
+          chargePower = Math.max(0, Math.min(2, chargePower)); // Limiter la charge de puissance
+        });
 
-        // Ajouter la brique à la scène
-        document.querySelector('a-scene').appendChild(brick);
-        bricks.push(brick);
-      }
-    }
-
-    // Retourne le nombre de points en fonction de la couleur
-    function getPointsForColor(color) {
-      switch (color) {
-        case 'red': return 10;
-        case 'green': return 20;
-        case 'blue': return 30;
-        case 'yellow': return 40;
-        case 'orange': return 50;
-        case 'purple': return 60;
-        default: return 0;
-      }
-    }
-
-    // Fonction de mise à jour du jeu
-    function gameLoop() {
-      // Vérifier les collisions avec le paddle
-      const ballPos = ball.getAttribute('position');
-      const paddlePos = paddle.getAttribute('position');
-      if (
-        ballPos.y <= paddlePos.y + 0.1 &&
-        ballPos.x >= paddlePos.x - 0.75 &&
-        ballPos.x <= paddlePos.x + 0.75
-      ) {
-        ball.setAttribute('position', `${ballPos.x} ${paddlePos.y + 0.1} ${ballPos.z}`);
-      }
-
-      // Vérifier les collisions avec les briques
-      bricks.forEach((brick, index) => {
-        const brickPos = brick.getAttribute('position');
-        if (
-          ballPos.y <= brickPos.y + 0.15 &&
-          ballPos.y >= brickPos.y - 0.15 &&
-          ballPos.x >= brickPos.x - 0.4 &&
-          ballPos.x <= brickPos.x + 0.4
-        ) {
-          // Supprimer la brique et ajouter les points
-          const pointsValue = parseInt(brick.getAttribute('data-points'));
-          points += pointsValue;
-          brick.parentNode.removeChild(brick);
-          bricks.splice(index, 1);
-        }
+        // Lors de la pression sur un bouton, lancer le projectile
+        controllerObj.addEventListener('triggerdown', () => {
+          if (!isCharging) {
+            isCharging = true;
+            launchProjectile(chargePower);
+            chargePower = 0;
+          }
+        });
       });
-
-      // Fin du jeu si toutes les briques sont détruites
-      if (bricks.length === 0) {
-        gameOver = true;
-        alert(`Game Over! You scored: ${points} points.`);
-        document.getElementById('start-screen').style.display = 'block';
-        document.getElementById('game-scene').style.display = 'none';
-        points = 0;
-      }
     }
 
-    // Fonction pour déplacer le paddle avec la manette
-    controller.addEventListener('controllerconnected', (event) => {
-      const controllerObj = event.detail.controller;
-      controllerObj.addEventListener('thumbstickmoved', (e) => {
-        // Déplacer le paddle horizontalement avec le thumbstick de la manette
-        let newPos = paddle.getAttribute('position');
-        newPos.x += e.detail.x * paddleSpeed;
-        // Limiter la position du paddle dans un certain intervalle
-        newPos.x = Math.max(-4, Math.min(4, newPos.x));
-        paddle.setAttribute('position', newPos);
-      });
-    });
+    // Fonction pour lancer le projectile
+    function launchProjectile(power) {
+      let projPos = projectile.getAttribute('position');
+      let launchDirection = new THREE.Vector3(0, 0, -1); // Lancer dans la direction de -Z (vers le mur)
+
+      // Appliquer une force de lancement basée sur la puissance
+      let force = launchDirection.multiplyScalar(power * 10);
+      projectile.body.applyImpulse(force, projectile.body.position);
+    }
   </script>
 
 </body>
