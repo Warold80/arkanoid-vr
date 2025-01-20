@@ -5,65 +5,78 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Arkanoid VR</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe-physics-system/dist/aframe-physics-system.min.js"></script>
   <style>
     body { margin: 0; }
     canvas { display: block; }
   </style>
 </head>
 <body>
-  <a-scene>
-    <!-- Paddle -->
-    <a-box id="paddle" position="0 -1.5 -3" width="1.5" height="0.2" depth="0.2" color="blue"></a-box>
+  <a-scene physics="gravity: -9.8" vr-mode-ui="enabled: true">
+    <!-- Camera -->
+    <a-camera position="0 1.6 0">
+      <a-entity id="controller" laser-controls="hand: right"></a-entity>
+    </a-camera>
+
+    <!-- Paddle (controlé par la manette) -->
+    <a-box id="paddle" position="0 -1.5 -3" width="1.5" height="0.2" depth="0.2" color="blue" dynamic-body="mass: 10"></a-box>
 
     <!-- Ball -->
-    <a-sphere id="ball" position="0 -1 -3" radius="0.1" color="red"></a-sphere>
+    <a-sphere id="ball" position="0 -1 -3" radius="0.1" color="red" dynamic-body="mass: 1"></a-sphere>
 
     <!-- Bricks -->
     <a-box position="-2 1 -3" width="0.8" height="0.3" depth="0.2" color="green" class="brick"></a-box>
     <a-box position="0 1 -3" width="0.8" height="0.3" depth="0.2" color="green" class="brick"></a-box>
     <a-box position="2 1 -3" width="0.8" height="0.3" depth="0.2" color="green" class="brick"></a-box>
+    <!-- Add more bricks as needed -->
 
     <!-- Floor -->
     <a-plane rotation="-90 0 0" position="0 -2 -3" width="10" height="10" color="#CCC"></a-plane>
-
-    <!-- Camera -->
-    <a-camera position="0 1.6 0">
-      <a-entity laser-controls="hand: right"></a-entity>
-    </a-camera>
   </a-scene>
 
   <script>
     // Variables
     const ball = document.getElementById('ball');
     const paddle = document.getElementById('paddle');
+    const controller = document.getElementById('controller');
     const bricks = document.querySelectorAll('.brick');
 
     let ballDirection = { x: 0.02, y: 0.02 };
-    let interval;
+    let paddleDirection = { x: 0, y: 0 };
 
-    // Move the paddle
-    window.addEventListener('mousemove', (e) => {
-      const x = (e.clientX / window.innerWidth) * 4 - 2; // Convert mouse X to scene coordinates
-      paddle.setAttribute('position', `${x} -1.5 -3`);
+    // Met à jour la position du paddle avec les contrôles de la manette
+    controller.addEventListener('controllerconnected', (event) => {
+      const controllerObj = event.detail.controller;
+
+      controllerObj.addEventListener('thumbstickmoved', (e) => {
+        // Déplace le paddle avec la manette
+        paddleDirection.x = e.detail.x * 2; // ajustez la vitesse si nécessaire
+      });
     });
 
-    // Ball movement
-    function moveBall() {
+    // Boucle de mise à jour
+    function update() {
+      // Déplace le paddle en fonction de la manette
+      const paddlePos = paddle.getAttribute('position');
+      paddlePos.x += paddleDirection.x;
+      paddle.setAttribute('position', paddlePos);
+
+      // Déplace la balle
       const ballPos = ball.getAttribute('position');
       ballPos.x += ballDirection.x;
       ballPos.y += ballDirection.y;
 
-      // Bounce off walls
+      // Rebondir contre les murs
       if (ballPos.x > 2 || ballPos.x < -2) ballDirection.x *= -1;
       if (ballPos.y > 2) ballDirection.y *= -1;
 
-      // Reset ball if it falls
+      // Réinitialiser la balle si elle tombe
       if (ballPos.y < -2) {
         ball.setAttribute('position', '0 -1 -3');
         ballDirection = { x: 0.02, y: 0.02 };
       }
 
-      // Check paddle collision
+      // Vérification de la collision avec le paddle
       const paddlePos = paddle.getAttribute('position');
       if (
         ballPos.y <= paddlePos.y + 0.1 &&
@@ -73,7 +86,7 @@
         ballDirection.y *= -1;
       }
 
-      // Check brick collisions
+      // Vérification de la collision avec les briques
       bricks.forEach((brick) => {
         const brickPos = brick.getAttribute('position');
         if (
@@ -83,15 +96,8 @@
           ballPos.x <= brickPos.x + 0.4
         ) {
           ballDirection.y *= -1;
-          brick.parentNode.removeChild(brick); // Remove brick
+          brick.parentNode.removeChild(brick); // Supprimer la brique après collision
         }
       });
 
-      ball.setAttribute('position', ballPos);
-    }
-
-    // Start game loop
-    interval = setInterval(moveBall, 16);
-  </script>
-</body>
-</html>
+      ball.setAttribute('position', 
